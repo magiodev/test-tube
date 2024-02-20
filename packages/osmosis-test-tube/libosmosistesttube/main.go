@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/go-bip39"
 	"os"
 	"sync"
@@ -146,17 +147,32 @@ func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string) *C
 		panic(err)
 	}
 
-	var priv *secp256k1.PrivKey
-	if mnemonic != "" {
-		// Generate a private key from the mnemonic phrase
-		seed := bip39.NewSeed(mnemonic, "")
-		priv = secp256k1.GenPrivKeyFromSecret(seed[:32])
-	} else {
-		// Generate a random private key as fallback
-		priv = secp256k1.GenPrivKey()
+	// Ensure mnemonic is valid
+	if !bip39.IsMnemonicValid(mnemonic) {
+		panic("Invalid mnemonic provided")
 	}
 
-	accAddr := sdk.AccAddress(priv.PubKey().Address())
+	// Convert mnemonic to seed
+	seed := bip39.NewSeed(mnemonic, "")
+
+	// Derive HD path for Cosmos
+	hdPath := hd.NewFundraiserParams(0, sdk.CoinType, 0).String()
+
+	// Derive master private key and chain code from seed
+	masterPriv, chainCode := hd.ComputeMastersFromSeed(seed)
+
+	// Derive the private key for the given HD path
+	derivedPrivKeyBytes, err := hd.DerivePrivateKeyForPath(masterPriv, chainCode, hdPath)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to derive private key: %v", err))
+	}
+
+	// Convert the derived private key bytes into a Cosmos SDK PrivKey
+	priv := secp256k1.GenPrivKeyFromSecret(derivedPrivKeyBytes)
+
+	// Convert private key to Cosmos SDK AccAddress
+	accAddr := sdk.AccAddress(priv.PubKey().Address().Bytes())
+	fmt.Println("Account Address:", accAddr.String())
 
 	for _, coin := range coins {
 		// create denom if not exist
@@ -175,7 +191,7 @@ func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string) *C
 
 	}
 
-	err := banktestutil.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
+	err = banktestutil.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
 	if err != nil {
 		panic(errors.Wrapf(err, "Failed to fund account"))
 	}
