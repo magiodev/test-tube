@@ -147,32 +147,20 @@ func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string) *C
 		panic(err)
 	}
 
-	// Ensure mnemonic is valid
-	if !bip39.IsMnemonicValid(mnemonic) {
-		panic("Invalid mnemonic provided")
-	}
+	// if !bip39.IsMnemonicValid(mnemonic) {
+	// 	 panic(fmt.Sprintf("Invalid mnemonic provided: %s", mnemonic))
+	// }
 
-	// Convert mnemonic to seed
 	seed := bip39.NewSeed(mnemonic, "")
-
-	// Derive HD path for Cosmos
 	hdPath := hd.NewFundraiserParams(0, sdk.CoinType, 0).String()
-
-	// Derive master private key and chain code from seed
 	masterPriv, chainCode := hd.ComputeMastersFromSeed(seed)
-
-	// Derive the private key for the given HD path
 	derivedPrivKeyBytes, err := hd.DerivePrivateKeyForPath(masterPriv, chainCode, hdPath)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to derive private key: %v", err))
 	}
 
-	// Convert the derived private key bytes into a Cosmos SDK PrivKey
 	priv := secp256k1.GenPrivKeyFromSecret(derivedPrivKeyBytes)
-
-	// Convert private key to Cosmos SDK AccAddress
 	accAddr := sdk.AccAddress(priv.PubKey().Address().Bytes())
-	fmt.Println("Account Address:", accAddr.String())
 
 	for _, coin := range coins {
 		// create denom if not exist
