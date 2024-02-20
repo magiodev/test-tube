@@ -81,8 +81,8 @@ impl OsmosisTestApp {
 
     /// Initialize account with initial balance of any coins.
     /// This function mints new coins and send to newly created account
-    pub fn init_account_from_seed(&self, coins: &[Coin], mnemonic: &str) -> RunnerResult<SigningAccount> {
-        self.inner.init_account_from_seed(coins, mnemonic)
+    pub fn init_account_from_mnemonic(&self, coins: &[Coin], mnemonic: &str) -> RunnerResult<SigningAccount> {
+        self.inner.init_account_from_mnemonic(coins, mnemonic)
     }
 
     /// Convinience function to create multiple accounts with the same
