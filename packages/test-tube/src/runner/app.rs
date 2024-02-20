@@ -12,7 +12,7 @@ use crate::account::{Account, FeeSetting, SigningAccount};
 use crate::bindings::{
     AccountNumber, AccountSequence, BeginBlock, CleanUp, EndBlock, Execute, GetBlockHeight,
     GetBlockTime, GetParamSet, GetValidatorAddress, GetValidatorPrivateKey, IncreaseTime,
-    InitAccount, InitTestEnv, Query, SetParamSet, Simulate,
+    InitAccount, InitAccountFromMnemonic, InitTestEnv, Query, SetParamSet, Simulate,
 };
 use crate::redefine_as_go_string;
 use crate::runner::error::{DecodeError, EncodeError, RunnerError};
@@ -113,6 +113,7 @@ impl BaseApp {
     pub fn get_block_height(&self) -> i64 {
         unsafe { GetBlockHeight(self.id) }
     }
+
     /// Initialize account with initial balance of any coins.
     /// This function mints new coins and send to newly created account
     pub fn init_account(&self, coins: &[Coin]) -> RunnerResult<SigningAccount> {
@@ -151,6 +152,53 @@ impl BaseApp {
             },
         ))
     }
+
+    /// Initialize account with initial balance of any coins.
+    /// This function mints new coins and send to newly created account
+    pub fn init_account_from_mnemonic(
+        &self,
+        coins: &[Coin],
+        mnemonic: &str,
+    ) -> RunnerResult<SigningAccount> {
+        let mut coins = coins.to_vec();
+
+        // invalid coins if denom are unsorted
+        coins.sort_by(|a, b| a.denom.cmp(&b.denom));
+
+        let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
+        redefine_as_go_string!(coins_json);
+
+        let mnemonic_json = serde_json::to_string(&mnemonic).map_err(EncodeError::JsonEncodeError)?;
+        redefine_as_go_string!(mnemonic_json);
+
+        let base64_priv = unsafe {
+            BeginBlock(self.id);
+            let addr = InitAccountFromMnemonic(self.id, coins_json, mnemonic_json);
+            EndBlock(self.id);
+            CString::from_raw(addr)
+        }
+        .to_str()
+        .map_err(DecodeError::Utf8Error)?
+        .to_string();
+
+        let secp256k1_priv = BASE64_STANDARD
+            .decode(base64_priv)
+            .map_err(DecodeError::Base64DecodeError)?;
+        let signging_key = SigningKey::from_slice(&secp256k1_priv).map_err(|e| {
+            let msg = e.to_string();
+            DecodeError::SigningKeyDecodeError { msg }
+        })?;
+
+        Ok(SigningAccount::new(
+            self.address_prefix.clone(),
+            signging_key,
+            FeeSetting::Auto {
+                gas_price: Coin::new(OSMOSIS_MIN_GAS_PRICE, self.fee_denom.clone()),
+                gas_adjustment: self.default_gas_adjustment,
+            },
+        ))
+    }
+
     /// Convinience function to create multiple accounts with the same
     /// Initial coins balance
     pub fn init_accounts(&self, coins: &[Coin], count: u64) -> RunnerResult<Vec<SigningAccount>> {

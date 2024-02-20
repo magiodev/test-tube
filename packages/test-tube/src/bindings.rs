@@ -215,6 +215,13 @@ extern "C" {
     pub fn InitAccount(envId: GoUint64, coinsJson: GoString) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
+    pub fn InitAccountFromMnemonic(
+        envId: GoUint64,
+        coinsJson: GoString,
+        mnemonic: GoString,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn BeginBlock(envId: GoUint64);
 }
 extern "C" {

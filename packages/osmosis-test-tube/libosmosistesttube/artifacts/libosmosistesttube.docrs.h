@@ -76,6 +76,7 @@ extern "C" {
 
 extern GoUint64 InitTestEnv();
 extern char* InitAccount(GoUint64 envId, GoString coinsJson);
+extern char* InitAccount(GoUint64 envId, GoString coinsJson, GoString mnemonic);
 extern void BeginBlock(GoUint64 envId);
 extern void EndBlock(GoUint64 envId);
 extern char* Execute(GoUint64 envId, GoString base64ReqDeliverTx);
