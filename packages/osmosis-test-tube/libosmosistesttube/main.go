@@ -139,7 +139,7 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 }
 
 //export InitAccountFromMnemonic
-func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string) *C.char {
+func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string, accountIndex uint32) *C.char {
 	env := loadEnv(envId)
 	var coins sdk.Coins
 
@@ -147,12 +147,12 @@ func InitAccountFromMnemonic(envId uint64, coinsJson string, mnemonic string) *C
 		panic(err)
 	}
 
-	// if !bip39.IsMnemonicValid(mnemonic) {
-	// 	 panic(fmt.Sprintf("Invalid mnemonic provided: %s", mnemonic))
-	// }
+	if !bip39.IsMnemonicValid(mnemonic) {
+		panic(fmt.Sprintf("Invalid mnemonic provided: %s", mnemonic))
+	}
 
 	seed := bip39.NewSeed(mnemonic, "")
-	hdPath := hd.NewFundraiserParams(0, sdk.CoinType, 0).String()
+	hdPath := hd.NewFundraiserParams(0, sdk.CoinType, accountIndex).String()
 	masterPriv, chainCode := hd.ComputeMastersFromSeed(seed)
 	derivedPrivKeyBytes, err := hd.DerivePrivateKeyForPath(masterPriv, chainCode, hdPath)
 	if err != nil {

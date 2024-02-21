@@ -219,6 +219,7 @@ extern "C" {
         envId: GoUint64,
         coinsJson: GoString,
         mnemonic: GoString,
+        accountIndex: GoUint32,
     ) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
